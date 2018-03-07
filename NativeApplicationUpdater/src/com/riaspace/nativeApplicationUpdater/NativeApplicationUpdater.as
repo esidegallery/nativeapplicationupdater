@@ -1,10 +1,5 @@
 package com.riaspace.nativeApplicationUpdater
 {
-	import air.update.events.DownloadErrorEvent;
-	import air.update.events.StatusUpdateErrorEvent;
-	import air.update.events.StatusUpdateEvent;
-	import air.update.events.UpdateEvent;
-	
 	import com.riaspace.nativeApplicationUpdater.utils.HdiutilHelper;
 	
 	import flash.desktop.NativeApplication;
@@ -24,7 +19,12 @@ package com.riaspace.nativeApplicationUpdater
 	import flash.system.Capabilities;
 	import flash.utils.ByteArray;
 	import flash.utils.setTimeout;
-
+	
+	import air.update.events.DownloadErrorEvent;
+	import air.update.events.StatusUpdateErrorEvent;
+	import air.update.events.StatusUpdateEvent;
+	import air.update.events.UpdateEvent;
+	
 	[Event(name="initialized", type="air.update.events.UpdateEvent")]
 	[Event(name="checkForUpdate", type="air.update.events.UpdateEvent")]
 	[Event(name="updateStatus",type="air.update.events.StatusUpdateEvent")]
@@ -89,6 +89,8 @@ package com.riaspace.nativeApplicationUpdater
 		
 		[Bindable]		
 		public var updateURL:String;
+		
+		public var noCaching:Boolean = true;
 		
 		protected var _isNewerVersionFunction:Function;
 		
@@ -293,7 +295,10 @@ package com.riaspace.nativeApplicationUpdater
 
 				try
 				{
-					urlStream.load(new URLRequest(updatePackageURL));
+					if (noCaching)
+						urlStream.load(new URLRequest(updatePackageURL + "?time=" + new Date().getTime()));
+					else
+						urlStream.load(new URLRequest(updatePackageURL));
 				}
 				catch(error:Error)
 				{
@@ -314,8 +319,10 @@ package com.riaspace.nativeApplicationUpdater
 			fileStream.removeEventListener(Event.CLOSE, fileStream_closeHandler);
 			fileStream.removeEventListener(IOErrorEvent.IO_ERROR, urlStream_ioErrorHandler);
 			
-			currentState = NativeApplicationUpdater.DOWNLOADED;
-			dispatchEvent(new UpdateEvent(UpdateEvent.DOWNLOAD_COMPLETE, false, true));
+			if (currentState == NativeApplicationUpdater.DOWNLOADED)
+			{
+				dispatchEvent(new UpdateEvent(UpdateEvent.DOWNLOAD_COMPLETE, false, true));
+			}
 		}
 		
 		protected function urlStream_progressHandler(event:ProgressEvent):void
@@ -334,6 +341,8 @@ package com.riaspace.nativeApplicationUpdater
 			urlStream.removeEventListener(IOErrorEvent.IO_ERROR, urlStream_ioErrorHandler);
 			urlStream.close();
 
+			currentState = NativeApplicationUpdater.DOWNLOADED;
+			
 			fileStream.close();
 		}
 
@@ -351,6 +360,28 @@ package com.riaspace.nativeApplicationUpdater
 			
 			dispatchEvent(new DownloadErrorEvent(DownloadErrorEvent.DOWNLOAD_ERROR, false, false, 
 				"Error downloading update file: " + event.text, UpdaterErrorCodes.ERROR_9005, event.errorID));
+		}
+		
+		public function cancelDownload():void
+		{
+			if (currentState == DOWNLOADING)
+			{
+				if (urlStream)
+				{
+					urlStream.removeEventListener(Event.OPEN, urlStream_openHandler);
+					urlStream.removeEventListener(ProgressEvent.PROGRESS, urlStream_progressHandler);
+					urlStream.removeEventListener(Event.COMPLETE, urlStream_completeHandler);
+					urlStream.removeEventListener(IOErrorEvent.IO_ERROR, urlStream_ioErrorHandler);
+					urlStream.connected && urlStream.close();
+				}
+				if (fileStream)
+				{
+					fileStream.removeEventListener(Event.CLOSE, fileStream_closeHandler);
+					fileStream.removeEventListener(IOErrorEvent.IO_ERROR, urlStream_ioErrorHandler);
+					fileStream.close();
+				}
+				currentState = AVAILABLE;
+			}
 		}
 		
 		/**
