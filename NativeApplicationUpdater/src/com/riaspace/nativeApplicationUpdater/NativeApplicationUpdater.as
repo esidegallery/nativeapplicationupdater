@@ -225,7 +225,15 @@ package com.riaspace.nativeApplicationUpdater
 			updateDescriptorLoader.removeEventListener(IOErrorEvent.IO_ERROR, updateDescriptorLoader_ioErrorHandler);
 			updateDescriptorLoader.close();
 			
-			updateDescriptor = new XML(updateDescriptorLoader.data);
+			try
+			{
+				updateDescriptor = new XML(updateDescriptorLoader.data);
+			}
+			catch (error:Error)
+			{
+				dispatchEvent(new StatusUpdateErrorEvent(StatusUpdateErrorEvent.UPDATE_ERROR, false, false, "Error parsing update descriptor XML"));
+				return;
+			}
 			
 			if (updateDescriptor.namespace() == UPDATE_XMLNS_1_0)
 			{
