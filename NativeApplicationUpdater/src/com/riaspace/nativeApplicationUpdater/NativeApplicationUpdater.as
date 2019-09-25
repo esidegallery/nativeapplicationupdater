@@ -37,10 +37,9 @@ package com.riaspace.nativeApplicationUpdater
 	
 	public class NativeApplicationUpdater extends EventDispatcher
 	{
+		internal namespace UPDATE_XMLNS_1_0 = "http://ns.riaspace.com/air/framework/update/description/1.0";
 		
-		namespace UPDATE_XMLNS_1_0 = "http://ns.riaspace.com/air/framework/update/description/1.0";
-		
-		namespace UPDATE_XMLNS_1_1 = "http://ns.riaspace.com/air/framework/update/description/1.1";
+		internal namespace UPDATE_XMLNS_1_1 = "http://ns.riaspace.com/air/framework/update/description/1.1";
 		
 		/**
 		 * The updater has not been initialized.
@@ -87,7 +86,6 @@ package com.riaspace.nativeApplicationUpdater
 		 **/
 		public static const INSTALLING:String = "INSTALLING";
 		
-		[Bindable]		
 		public var updateURL:String;
 		
 		public var noCaching:Boolean = true;
@@ -126,37 +124,37 @@ package com.riaspace.nativeApplicationUpdater
 		{
 			if (currentState == UNINITIALIZED)
 			{
-				currentState = INITIALIZING;
+				_currentState = INITIALIZING;
 				
 				var applicationDescriptor:XML = NativeApplication.nativeApplication.applicationDescriptor;
 				var xmlns:Namespace = new Namespace(applicationDescriptor.namespace());
 				
 				if (xmlns.uri == "http://ns.adobe.com/air/application/2.0")
-					currentVersion = applicationDescriptor.xmlns::version;
+					_currentVersion = applicationDescriptor.xmlns::version;
 				else
-					currentVersion = applicationDescriptor.xmlns::versionNumber;
+					_currentVersion = applicationDescriptor.xmlns::versionNumber;
 
 				if (os.indexOf("win") > -1)
 				{
-					installerType = "exe";
+					_installerType = "exe";
 				}
 				else if (os.indexOf("mac") > -1)
 				{
-					installerType = "dmg";
+					_installerType = "dmg";
 				}
 				else if (os.indexOf("linux") > -1)
 				{
 					if ((new File("/usr/bin/dpkg")).exists)
-						installerType = "deb";
+						_installerType = "deb";
 					else
-						installerType = "rpm";
+						_installerType = "rpm";
 				}
 				else
 				{
 					dispatchEvent(new ErrorEvent(ErrorEvent.ERROR, false, false, "Not supported os type!", UpdaterErrorCodes.ERROR_9000));
 				}
 				
-				currentState = READY;
+				_currentState = READY;
 				dispatchEvent(new UpdateEvent(UpdateEvent.INITIALIZED));
 			}
 		}
@@ -165,7 +163,7 @@ package com.riaspace.nativeApplicationUpdater
 		{
 			if (currentState == READY)
 			{
-				currentState = BEFORE_CHECKING;
+				_currentState = BEFORE_CHECKING;
 				
 				var checkForUpdateEvent:UpdateEvent = new UpdateEvent(UpdateEvent.CHECK_FOR_UPDATE, false, true);
 				dispatchEvent(checkForUpdateEvent);
@@ -201,7 +199,7 @@ package com.riaspace.nativeApplicationUpdater
 		{
 			if (currentState == BEFORE_CHECKING)
 			{
-				currentState = CHECKING;
+				_currentState = CHECKING;
 				
 				updateDescriptorLoader =  new URLLoader();
 				updateDescriptorLoader.addEventListener(Event.COMPLETE,  updateDescriptorLoader_completeHandler);
@@ -227,7 +225,7 @@ package com.riaspace.nativeApplicationUpdater
 			
 			try
 			{
-				updateDescriptor = new XML(updateDescriptorLoader.data);
+				_updateDescriptor = new XML(updateDescriptorLoader.data);
 			}
 			catch (error:Error)
 			{
@@ -237,18 +235,18 @@ package com.riaspace.nativeApplicationUpdater
 			
 			if (updateDescriptor.namespace() == UPDATE_XMLNS_1_0)
 			{
-				updateVersion = updateDescriptor.UPDATE_XMLNS_1_0::version;
-				updateDescription = updateDescriptor.UPDATE_XMLNS_1_0::description;
-				updatePackageURL = updateDescriptor.UPDATE_XMLNS_1_0::urls.UPDATE_XMLNS_1_1::[installerType];
+				_updateVersion = updateDescriptor.UPDATE_XMLNS_1_0::version;
+				_updateDescription = updateDescriptor.UPDATE_XMLNS_1_0::description;
+				_updatePackageURL = updateDescriptor.UPDATE_XMLNS_1_0::urls.UPDATE_XMLNS_1_1::[installerType];
 			}
 			else
 			{
 				var typeXml:XMLList = updateDescriptor.UPDATE_XMLNS_1_1::[installerType];
 				if (typeXml.length() > 0)
 				{
-					updateVersion = typeXml.UPDATE_XMLNS_1_1::version;
-					updateDescription = typeXml.UPDATE_XMLNS_1_1::description;
-					updatePackageURL = typeXml.UPDATE_XMLNS_1_1::url;
+					_updateVersion = typeXml.UPDATE_XMLNS_1_1::version;
+					_updateDescription = typeXml.UPDATE_XMLNS_1_1::description;
+					_updatePackageURL = typeXml.UPDATE_XMLNS_1_1::url;
 				}
 			}
 
@@ -259,7 +257,7 @@ package com.riaspace.nativeApplicationUpdater
 				return;
 			}
 
-			currentState = AVAILABLE;			
+			_currentState = AVAILABLE;			
 			dispatchEvent(new StatusUpdateEvent(
 				StatusUpdateEvent.UPDATE_STATUS, false, true, 
 				isNewerVersionFunction.call(this, currentVersion, updateVersion), updateVersion)); // TODO: handle last event param with details (description)
@@ -288,7 +286,7 @@ package com.riaspace.nativeApplicationUpdater
 			if (currentState == AVAILABLE)
 			{
 				var fileName:String = updatePackageURL.substr(updatePackageURL.lastIndexOf("/") + 1);
-				downloadedFile = File.createTempDirectory().resolvePath(fileName);
+				_downloadedFile = File.createTempDirectory().resolvePath(fileName);
 				
 				fileStream = new FileStream();
 				fileStream.addEventListener(IOErrorEvent.IO_ERROR, urlStream_ioErrorHandler);
@@ -318,7 +316,7 @@ package com.riaspace.nativeApplicationUpdater
 
 		protected function urlStream_openHandler(event:Event):void
 		{
-			currentState = NativeApplicationUpdater.DOWNLOADING;
+			_currentState = NativeApplicationUpdater.DOWNLOADING;
 			dispatchEvent(new UpdateEvent(UpdateEvent.DOWNLOAD_START));
 		}
 		
@@ -349,7 +347,7 @@ package com.riaspace.nativeApplicationUpdater
 			urlStream.removeEventListener(IOErrorEvent.IO_ERROR, urlStream_ioErrorHandler);
 			urlStream.close();
 
-			currentState = NativeApplicationUpdater.DOWNLOADED;
+			_currentState = NativeApplicationUpdater.DOWNLOADED;
 			
 			fileStream.close();
 		}
@@ -388,7 +386,7 @@ package com.riaspace.nativeApplicationUpdater
 					fileStream.removeEventListener(IOErrorEvent.IO_ERROR, urlStream_ioErrorHandler);
 					fileStream.close();
 				}
-				currentState = AVAILABLE;
+				_currentState = AVAILABLE;
 			}
 		}
 		
@@ -465,7 +463,7 @@ package com.riaspace.nativeApplicationUpdater
 			
 			if (!beforeInstallEvent.isDefaultPrevented())
 			{
-				currentState = INSTALLING;
+				_currentState = INSTALLING;
 				
 				if (os.indexOf("linux") > -1)
 				{
@@ -496,62 +494,31 @@ package com.riaspace.nativeApplicationUpdater
 			}
 		}
 		
-		[Bindable]
 		public function get currentVersion():String
 		{
 			return _currentVersion;
 		}
 
-		protected function set currentVersion(value:String):void
-		{
-			_currentVersion = value;
-		}
-
-		[Bindable]
 		public function get updateVersion():String
 		{
 			return _updateVersion;
 		}
 
-		protected function set updateVersion(value:String):void
-		{
-			_updateVersion = value;
-		}
-
-		[Bindable]
 		public function get updateDescriptor():XML
 		{
 			return _updateDescriptor;
 		}
 
-		protected function set updateDescriptor(value:XML):void
-		{
-			_updateDescriptor = value;
-		}
-
-		[Bindable]
 		public function get currentState():String
 		{
 			return _currentState;
 		}
 
-		protected function set currentState(value:String):void
-		{
-			_currentState = value;
-		}
-
-		[Bindable]
 		public function get downloadedFile():File
 		{
 			return _downloadedFile;
 		}
 
-		protected function set downloadedFile(value:File):void
-		{
-			_downloadedFile = value;
-		}
-
-		[Bindable]
 		public function get isNewerVersionFunction():Function
 		{
 			if (_isNewerVersionFunction != null)
@@ -565,37 +532,19 @@ package com.riaspace.nativeApplicationUpdater
 			_isNewerVersionFunction = value;
 		}
 
-		[Bindable]
 		public function get installerType():String
 		{
 			return _installerType;
 		}
 
-		protected function set installerType(value:String):void
-		{
-			_installerType = value;
-		}
-
-		[Bindable]
 		public function get updatePackageURL():String
 		{
 			return _updatePackageURL;
 		}
 		
-		protected function set updatePackageURL(value:String):void
-		{
-			_updatePackageURL = value;
-		}
-		
-		[Bindable]
 		public function get updateDescription():String
 		{
 			return _updateDescription;
-		}
-		
-		protected function set updateDescription(value:String):void
-		{
-			_updateDescription = value;
 		}
 	}
 }
